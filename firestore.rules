@@ -1,0 +1,259 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Global Hardened Primitives ---
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidLanguage(lang) {
+      return lang is string && lang in ['en', 'hi', 'ta', 'bn'];
+    }
+
+    // --- Validation Blueprints ---
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'preferredLanguage', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'displayName', 'email', 'preferredLanguage', 'createdAt', 'updatedAt'])
+        && data.uid is string && data.uid == userId && data.uid == request.auth.uid
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 200
+        && isValidLanguage(data.preferredLanguage)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidDietPlan(diet) {
+      return diet is map
+        && diet.keys().hasAll(['allowed', 'avoid', 'hydrationGoal'])
+        && diet.keys().hasOnly(['allowed', 'avoid', 'hydrationGoal'])
+        && diet.allowed is list && diet.allowed.size() <= 15
+        && (diet.allowed.size() == 0 || diet.allowed[0] is string)
+        && diet.avoid is list && diet.avoid.size() <= 15
+        && (diet.avoid.size() == 0 || diet.avoid[0] is string)
+        && diet.hydrationGoal is string && diet.hydrationGoal.size() <= 300;
+    }
+
+    function isValidRecoveryPlan(data) {
+      return data.keys().hasAll([
+          'ownerId', 'title', 'hospitalName', 'dischargeDate', 'patientContext',
+          'language', 'plainSummary', 'dietPlan', 'activityRules', 'redFlags',
+          'followUpAppointments', 'medicines', 'conflicts', 'clinicianNote',
+          'status', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'title', 'hospitalName', 'dischargeDate', 'patientContext',
+          'language', 'plainSummary', 'dietPlan', 'activityRules', 'redFlags',
+          'followUpAppointments', 'medicines', 'conflicts', 'clinicianNote',
+          'status', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string && data.ownerId == request.auth.uid
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.hospitalName is string && data.hospitalName.size() <= 160
+        && data.dischargeDate is string && data.dischargeDate.size() <= 40
+        && data.patientContext is string && data.patientContext.size() <= 300
+        && isValidLanguage(data.language)
+        && data.plainSummary is string && data.plainSummary.size() >= 1 && data.plainSummary.size() <= 4000
+        && isValidDietPlan(data.dietPlan)
+        && data.activityRules is list && data.activityRules.size() <= 12
+        && (data.activityRules.size() == 0 || data.activityRules[0] is string)
+        && data.redFlags is list && data.redFlags.size() <= 12
+        && (data.redFlags.size() == 0 || data.redFlags[0] is string)
+        && data.followUpAppointments is list && data.followUpAppointments.size() <= 10
+        && (data.followUpAppointments.size() == 0 || data.followUpAppointments[0] is string)
+        && data.medicines is list && data.medicines.size() <= 20
+        && (data.medicines.size() == 0 || data.medicines[0] is map)
+        && data.conflicts is list && data.conflicts.size() <= 15
+        && (data.conflicts.size() == 0 || data.conflicts[0] is map)
+        && data.clinicianNote is string && data.clinicianNote.size() <= 3000
+        && data.status is string && data.status in ['active', 'archived']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidDailyCheckIn(data, planId) {
+      return data.keys().hasAll([
+          'planId', 'ownerId', 'checkInDate', 'inputMode', 'language',
+          'symptomNote', 'medicinesTaken', 'severity', 'guidance',
+          'matchedRedFlags', 'clinicianAlertSummary', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'planId', 'ownerId', 'checkInDate', 'inputMode', 'language',
+          'symptomNote', 'medicinesTaken', 'severity', 'guidance',
+          'matchedRedFlags', 'clinicianAlertSummary', 'createdAt'
+        ])
+        && data.planId is string && data.planId == planId
+        && data.ownerId is string && data.ownerId == request.auth.uid
+        && data.checkInDate is string && data.checkInDate.size() >= 4 && data.checkInDate.size() <= 32
+        && data.inputMode is string && data.inputMode in ['text', 'voice']
+        && isValidLanguage(data.language)
+        && data.symptomNote is string && data.symptomNote.size() >= 1 && data.symptomNote.size() <= 2000
+        && data.medicinesTaken is list && data.medicinesTaken.size() <= 20
+        && (data.medicinesTaken.size() == 0 || data.medicinesTaken[0] is string)
+        && data.severity is string && data.severity in ['stable', 'caution', 'red_flag']
+        && data.guidance is string && data.guidance.size() >= 1 && data.guidance.size() <= 3000
+        && data.matchedRedFlags is list && data.matchedRedFlags.size() <= 10
+        && (data.matchedRedFlags.size() == 0 || data.matchedRedFlags[0] is string)
+        && data.clinicianAlertSummary is string && data.clinicianAlertSummary.size() <= 3000
+        && data.createdAt is timestamp;
+    }
+
+    function isValidDoseLog(data, planId) {
+      return data.keys().hasAll(['planId', 'ownerId', 'dateKey', 'slotKey', 'taken', 'updatedAt'])
+        && data.keys().hasOnly(['planId', 'ownerId', 'dateKey', 'slotKey', 'taken', 'updatedAt'])
+        && data.planId is string && data.planId == planId
+        && data.ownerId is string && data.ownerId == request.auth.uid
+        && data.dateKey is string && data.dateKey.size() >= 8 && data.dateKey.size() <= 20
+        && data.slotKey is string && data.slotKey.size() >= 1 && data.slotKey.size() <= 160
+        && data.taken is bool
+        && data.updatedAt is timestamp;
+    }
+
+    // --- Collection: /users/{userId} (PII Isolated, Owner-Only) ---
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if false;
+      allow create: if isVerifiedUser()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser()
+        && isValidId(userId)
+        && request.auth.uid == userId
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'preferredLanguage', 'updatedAt']);
+      allow delete: if false;
+    }
+
+    // --- Collection: /recoveryPlans/{planId} ---
+    match /recoveryPlans/{planId} {
+      allow get: if isSignedIn()
+        && isValidId(planId)
+        && existing().ownerId == request.auth.uid;
+
+      allow list: if isSignedIn()
+        && existing().ownerId == request.auth.uid;
+
+      allow create: if isVerifiedUser()
+        && isValidId(planId)
+        && isValidRecoveryPlan(incoming())
+        && incoming().status == 'active'
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidId(planId)
+        && isValidRecoveryPlan(incoming())
+        && existing().ownerId == request.auth.uid
+        && existing().status != 'archived'
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action: Translate / Update Plan Details
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'language', 'plainSummary', 'dietPlan', 'activityRules',
+            'redFlags', 'followUpAppointments', 'medicines', 'conflicts',
+            'clinicianNote', 'title', 'updatedAt'
+          ]) ||
+          // Action: Archive Plan
+          (
+            incoming().status == 'archived'
+            && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          )
+        );
+
+      allow delete: if isVerifiedUser()
+        && isValidId(planId)
+        && existing().ownerId == request.auth.uid;
+
+      // --- Subcollection: /recoveryPlans/{planId}/checkIns/{checkInId} ---
+      match /checkIns/{checkInId} {
+        allow get: if isSignedIn()
+          && isValidId(planId)
+          && isValidId(checkInId)
+          && existing().ownerId == request.auth.uid;
+
+        allow list: if isSignedIn()
+          && existing().ownerId == request.auth.uid;
+
+        allow create: if isVerifiedUser()
+          && isValidId(planId)
+          && isValidId(checkInId)
+          && isValidDailyCheckIn(incoming(), planId)
+          && incoming().createdAt == request.time
+          && exists(/databases/$(database)/documents/recoveryPlans/$(planId))
+          && get(/databases/$(database)/documents/recoveryPlans/$(planId)).data.ownerId == request.auth.uid;
+
+        allow update: if false;
+        allow delete: if isVerifiedUser()
+          && isValidId(planId)
+          && isValidId(checkInId)
+          && existing().ownerId == request.auth.uid;
+      }
+
+      // --- Subcollection: /recoveryPlans/{planId}/doseLogs/{logId} ---
+      match /doseLogs/{logId} {
+        allow get: if isSignedIn()
+          && isValidId(planId)
+          && isValidId(logId)
+          && existing().ownerId == request.auth.uid;
+
+        allow list: if isSignedIn()
+          && existing().ownerId == request.auth.uid;
+
+        allow create: if isVerifiedUser()
+          && isValidId(planId)
+          && isValidId(logId)
+          && isValidDoseLog(incoming(), planId)
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/recoveryPlans/$(planId))
+          && get(/databases/$(database)/documents/recoveryPlans/$(planId)).data.ownerId == request.auth.uid;
+
+        allow update: if isVerifiedUser()
+          && isValidId(planId)
+          && isValidId(logId)
+          && isValidDoseLog(incoming(), planId)
+          && existing().ownerId == request.auth.uid
+          && incoming().ownerId == existing().ownerId
+          && incoming().planId == existing().planId
+          && incoming().dateKey == existing().dateKey
+          && incoming().slotKey == existing().slotKey
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['taken', 'updatedAt']);
+
+        allow delete: if isVerifiedUser()
+          && isValidId(planId)
+          && isValidId(logId)
+          && existing().ownerId == request.auth.uid;
+      }
+    }
+  }
+}

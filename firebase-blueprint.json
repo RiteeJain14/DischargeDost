@@ -1,0 +1,293 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Patient or caregiver account profile storing display name, email, and preferred recovery language.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the account owner.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name of the patient or caregiver.",
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified email address of the owner.",
+          "maxLength": 200
+        },
+        "preferredLanguage": {
+          "type": "string",
+          "enum": ["en", "hi", "ta", "bn"],
+          "description": "Preferred display language code."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when profile was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when profile was last updated."
+        }
+      },
+      "required": ["uid", "displayName", "email", "preferredLanguage", "createdAt", "updatedAt"]
+    },
+    "RecoveryPlan": {
+      "title": "RecoveryPlan",
+      "description": "Structured hospital discharge recovery plan extracted by Gemini with medicines, conflict flags, diet, and red flags.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the user who owns this recovery plan.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "description": "Concise title of the discharge episode.",
+          "maxLength": 160
+        },
+        "hospitalName": {
+          "type": "string",
+          "description": "Hospital or clinic name from the discharge summary.",
+          "maxLength": 160
+        },
+        "dischargeDate": {
+          "type": "string",
+          "description": "Discharge date string.",
+          "maxLength": 40
+        },
+        "patientContext": {
+          "type": "string",
+          "description": "Short summary of diagnosis and procedure.",
+          "maxLength": 300
+        },
+        "language": {
+          "type": "string",
+          "enum": ["en", "hi", "ta", "bn"],
+          "description": "Active display language of the plan."
+        },
+        "plainSummary": {
+          "type": "string",
+          "description": "Plain-language explanation for patient and family.",
+          "maxLength": 4000
+        },
+        "dietPlan": {
+          "type": "object",
+          "description": "Allowed foods, foods to avoid, and hydration instructions.",
+          "properties": {
+            "allowed": { "type": "array" },
+            "avoid": { "type": "array" },
+            "hydrationGoal": { "type": "string", "maxLength": 300 }
+          }
+        },
+        "activityRules": {
+          "type": "array",
+          "description": "Bounded list of activity and wound care rules."
+        },
+        "redFlags": {
+          "type": "array",
+          "description": "Bounded list of warning symptoms requiring urgent medical attention."
+        },
+        "followUpAppointments": {
+          "type": "array",
+          "description": "Bounded list of scheduled follow-up visits."
+        },
+        "medicines": {
+          "type": "array",
+          "description": "Bounded list of extracted medicine schedule items."
+        },
+        "conflicts": {
+          "type": "array",
+          "description": "Bounded list of drug interaction and timing conflicts."
+        },
+        "clinicianNote": {
+          "type": "string",
+          "description": "English SBAR handover note for clinicians.",
+          "maxLength": 3000
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "archived"],
+          "description": "Lifecycle status of the recovery plan."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update."
+        }
+      },
+      "required": [
+        "ownerId",
+        "title",
+        "hospitalName",
+        "dischargeDate",
+        "patientContext",
+        "language",
+        "plainSummary",
+        "dietPlan",
+        "activityRules",
+        "redFlags",
+        "followUpAppointments",
+        "medicines",
+        "conflicts",
+        "clinicianNote",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "DailyCheckIn": {
+      "title": "DailyCheckIn",
+      "description": "Daily patient symptom check-in and AI red-flag triage evaluation.",
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "description": "Parent recovery plan ID.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the recovery plan owner.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "checkInDate": {
+          "type": "string",
+          "description": "ISO date key for the check-in.",
+          "maxLength": 32
+        },
+        "inputMode": {
+          "type": "string",
+          "enum": ["text", "voice"],
+          "description": "Whether symptoms were entered via text or voice."
+        },
+        "language": {
+          "type": "string",
+          "enum": ["en", "hi", "ta", "bn"],
+          "description": "Language of the patient guidance."
+        },
+        "symptomNote": {
+          "type": "string",
+          "description": "Reported symptoms or voice transcript.",
+          "maxLength": 2000
+        },
+        "medicinesTaken": {
+          "type": "array",
+          "description": "Bounded list of medicines confirmed taken."
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["stable", "caution", "red_flag"],
+          "description": "Triage severity outcome."
+        },
+        "guidance": {
+          "type": "string",
+          "description": "Plain-language guidance returned to patient.",
+          "maxLength": 3000
+        },
+        "matchedRedFlags": {
+          "type": "array",
+          "description": "Bounded list of matched discharge warning signs."
+        },
+        "clinicianAlertSummary": {
+          "type": "string",
+          "description": "English clinician handover alert summary.",
+          "maxLength": 3000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of check-in creation."
+        }
+      },
+      "required": [
+        "planId",
+        "ownerId",
+        "checkInDate",
+        "inputMode",
+        "language",
+        "symptomNote",
+        "medicinesTaken",
+        "severity",
+        "guidance",
+        "matchedRedFlags",
+        "clinicianAlertSummary",
+        "createdAt"
+      ]
+    },
+    "DoseLog": {
+      "title": "DoseLog",
+      "description": "Daily medication adherence record per dose slot.",
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "description": "Parent recovery plan ID.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the recovery plan owner.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "dateKey": {
+          "type": "string",
+          "description": "YYYY-MM-DD local date key.",
+          "maxLength": 20
+        },
+        "slotKey": {
+          "type": "string",
+          "description": "Medicine and slot identifier.",
+          "maxLength": 160
+        },
+        "taken": {
+          "type": "boolean",
+          "description": "Whether the dose was taken."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of dose status update."
+        }
+      },
+      "required": ["planId", "ownerId", "dateKey", "slotKey", "taken", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user profile containing email PII and preferred language; strictly owner-only."
+    },
+    "/recoveryPlans/{planId}": {
+      "schema": { "$ref": "#/entities/RecoveryPlan" },
+      "description": "Patient or caregiver recovery plans owned by ownerId."
+    },
+    "/recoveryPlans/{planId}/checkIns/{checkInId}": {
+      "schema": { "$ref": "#/entities/DailyCheckIn" },
+      "description": "Daily symptom check-ins scoped to a parent recovery plan."
+    },
+    "/recoveryPlans/{planId}/doseLogs/{logId}": {
+      "schema": { "$ref": "#/entities/DoseLog" },
+      "description": "Daily medication adherence logs scoped to a parent recovery plan."
+    }
+  }
+}
