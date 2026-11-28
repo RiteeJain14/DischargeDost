@@ -1,5 +1,5 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { initializeApp, type FirebaseApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, type Auth } from 'firebase/auth';
 import {
   collection,
   doc,
@@ -13,14 +13,26 @@ import {
   setDoc,
   updateDoc,
   where,
+  type Firestore,
   type Unsubscribe,
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import type { DailyCheckIn, LanguageCode, RecoveryPlan } from '../types';
+import type { DailyCheckIn, FollowUpReport, LanguageCode, RecoveryPlan } from '../types';
 
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const auth = getAuth(app);
+export const isFirebaseConfigured = Boolean(
+  firebaseConfig.apiKey?.trim() &&
+    firebaseConfig.projectId?.trim() &&
+    firebaseConfig.appId?.trim(),
+);
+
+const app: FirebaseApp | null = isFirebaseConfigured ? initializeApp(firebaseConfig) : null;
+export const db: Firestore | null =
+  app && firebaseConfig.firestoreDatabaseId?.trim()
+    ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
+    : app
+    ? getFirestore(app)
+    : null;
+export const auth: Auth | null = app ? getAuth(app) : null;
 const googleProvider = new GoogleAuthProvider();
 
 export const OperationType = {
@@ -59,13 +71,13 @@ export function handleFirestoreError(
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-      tenantId: auth.currentUser?.tenantId,
+      userId: auth?.currentUser?.uid,
+      email: auth?.currentUser?.email,
+      emailVerified: auth?.currentUser?.emailVerified,
+      isAnonymous: auth?.currentUser?.isAnonymous,
+      tenantId: auth?.currentUser?.tenantId,
       providerInfo:
-        auth.currentUser?.providerData?.map((provider) => ({
+        auth?.currentUser?.providerData?.map((provider) => ({
           providerId: provider.providerId,
           email: provider.email,
         })) || [],
@@ -78,6 +90,7 @@ export function handleFirestoreError(
 }
 
 export async function testFirestoreConnection(): Promise<void> {
+  if (!db) return;
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error) {
@@ -88,10 +101,14 @@ export async function testFirestoreConnection(): Promise<void> {
 }
 
 export async function signInWithGoogle() {
+  if (!auth) {
+    throw new Error('Firebase is not configured yet. Add your Firebase config to enable Google Sign-In.');
+  }
   return signInWithPopup(auth, googleProvider);
 }
 
 export async function signOutUser() {
+  if (!auth) return;
   return signOut(auth);
 }
 
@@ -114,6 +131,7 @@ function generateValidId(prefix: string): string {
 }
 
 export async function upsertUserProfile(preferredLanguage: LanguageCode): Promise<void> {
+  if (!auth || !db) return;
   const user = auth.currentUser;
   if (!user) return;
   const path = `users/${user.uid}`;
@@ -146,6 +164,7 @@ export async function upsertUserProfile(preferredLanguage: LanguageCode): Promis
 }
 
 export async function getUserPreferredLanguage(uid: string): Promise<LanguageCode | null> {
+  if (!db) return null;
   const path = `users/${uid}`;
   try {
     const snap = await getDoc(doc(db, 'users', uid));
@@ -161,6 +180,7 @@ export async function getUserPreferredLanguage(uid: string): Promise<LanguageCod
 }
 
 export async function saveRecoveryPlan(plan: Omit<RecoveryPlan, 'id'>): Promise<string> {
+  if (!auth || !db) throw new Error('Firebase is not configured.');
   const user = auth.currentUser;
   if (!user) throw new Error('User must be signed in to save to Firestore.');
   const planId = generateValidId('plan');
@@ -215,6 +235,7 @@ export async function updateRecoveryPlanTranslation(
   planId: string,
   translated: RecoveryPlan,
 ): Promise<void> {
+  if (!db) return;
   const path = `recoveryPlans/${planId}`;
   try {
     await updateDoc(doc(db, 'recoveryPlans', planId), {
@@ -229,8 +250,21 @@ export async function updateRecoveryPlanTranslation(
       activityRules: clampStrArray(translated.activityRules, 12, 240),
       redFlags: clampStrArray(translated.redFlags, 12, 240),
       followUpAppointments: clampStrArray(translated.followUpAppointments, 10, 200),
-      medicines: (Array.isArray(translated.medicines) ? translated.medicines : []).slice(0, 20),
-      conflicts: (Array.isArray(translated.conflicts) ? translated.conflicts : []).slice(0, 15),
+      medicines: (Array.isArray(translated.medicines) ? translated.medicines : []).slice(0, 20).map((m) => ({
+        name: clampStr(m.name, 120, 'Medicine'),
+        dose: clampStr(m.dose, 80, ''),
+        slot: m.slot,
+        timeLabel: clampStr(m.timeLabel, 100, ''),
+        duration: clampStr(m.duration, 80, ''),
+        purpose: clampStr(m.purpose, 240, ''),
+        foodRule: clampStr(m.foodRule, 160, ''),
+      })),
+      conflicts: (Array.isArray(translated.conflicts) ? translated.conflicts : []).slice(0, 15).map((c) => ({
+        pair: clampStr(c.pair, 160, ''),
+        severity: c.severity,
+        explanation: clampStr(c.explanation, 500, ''),
+        recommendation: clampStr(c.recommendation, 500, ''),
+      })),
       clinicianNote: clampStr(translated.clinicianNote, 3000, ''),
       updatedAt: serverTimestamp(),
     });
@@ -239,10 +273,48 @@ export async function updateRecoveryPlanTranslation(
   }
 }
 
+export async function saveFollowUpReport(
+  planId: string,
+  report: Omit<FollowUpReport, 'id' | 'planId' | 'ownerId'>,
+): Promise<string> {
+  if (!auth || !db) throw new Error('Firebase is not configured.');
+  const user = auth.currentUser;
+  if (!user) throw new Error('User must be signed in to save follow-up reports.');
+  const followUpId = generateValidId('fup');
+  const path = `recoveryPlans/${planId}/followUps/${followUpId}`;
+
+  const safeType =
+    report.reportType === 'opd_note' ||
+    report.reportType === 'lab_report' ||
+    report.reportType === 'prescription_update' ||
+    report.reportType === 'other'
+      ? report.reportType
+      : 'opd_note';
+
+  try {
+    await setDoc(doc(db, 'recoveryPlans', planId, 'followUps', followUpId), {
+      planId,
+      ownerId: user.uid,
+      reportDate: clampStr(report.reportDate, 40, new Date().toISOString().slice(0, 10)),
+      doctorOrClinic: clampStr(report.doctorOrClinic, 160, 'Follow-Up Clinic'),
+      reportType: safeType,
+      language: report.language,
+      summary: clampStr(report.summary, 2500, 'Follow-up report added.'),
+      changes: clampStrArray(report.changes, 15, 300),
+      clinicianSummary: clampStr(report.clinicianSummary, 2500, ''),
+      createdAt: serverTimestamp(),
+    });
+    return followUpId;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, path);
+  }
+}
+
 export async function saveDailyCheckIn(
   planId: string,
   checkIn: Omit<DailyCheckIn, 'id' | 'planId' | 'ownerId'>,
 ): Promise<string> {
+  if (!auth || !db) throw new Error('Firebase is not configured.');
   const user = auth.currentUser;
   if (!user) throw new Error('User must be signed in to save check-ins.');
   const checkInId = generateValidId('chk');
@@ -275,6 +347,7 @@ export async function toggleDoseLog(
   slotKey: string,
   taken: boolean,
 ): Promise<void> {
+  if (!auth || !db) return;
   const user = auth.currentUser;
   if (!user) return;
   const cleanSlot = slotKey.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
@@ -300,6 +373,7 @@ export function subscribeUserPlans(
   onData: (plans: RecoveryPlan[]) => void,
   onError: (err: Error) => void,
 ): Unsubscribe {
+  if (!db) return () => {};
   const q = query(
     collection(db, 'recoveryPlans'),
     where('ownerId', '==', uid),
@@ -330,6 +404,7 @@ export function subscribePlanCheckIns(
   onData: (items: DailyCheckIn[]) => void,
   onError: (err: Error) => void,
 ): Unsubscribe {
+  if (!db) return () => {};
   const path = `recoveryPlans/${planId}/checkIns`;
   const q = query(
     collection(db, 'recoveryPlans', planId, 'checkIns'),
@@ -366,6 +441,7 @@ export function subscribeDoseLogs(
   onData: (takenMap: Record<string, boolean>) => void,
   onError: (err: Error) => void,
 ): Unsubscribe {
+  if (!db) return () => {};
   const path = `recoveryPlans/${planId}/doseLogs`;
   const q = query(
     collection(db, 'recoveryPlans', planId, 'doseLogs'),
@@ -381,6 +457,42 @@ export function subscribeDoseLogs(
         if (data.slotKey) map[data.slotKey] = Boolean(data.taken);
       });
       onData(map);
+    },
+    (error) => {
+      try {
+        handleFirestoreError(error, OperationType.LIST, path);
+      } catch (wrapped) {
+        onError(wrapped instanceof Error ? wrapped : new Error(String(wrapped)));
+      }
+    },
+  );
+}
+
+export function subscribePlanFollowUps(
+  planId: string,
+  uid: string,
+  onData: (items: FollowUpReport[]) => void,
+  onError: (err: Error) => void,
+): Unsubscribe {
+  if (!db) return () => {};
+  const path = `recoveryPlans/${planId}/followUps`;
+  const q = query(
+    collection(db, 'recoveryPlans', planId, 'followUps'),
+    where('ownerId', '==', uid),
+    orderBy('createdAt', 'desc'),
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      const items: FollowUpReport[] = snap.docs.map((d) => {
+        const data = d.data() as Omit<FollowUpReport, 'id'>;
+        return {
+          id: d.id,
+          ...data,
+          createdAtLabel: data.reportDate,
+        };
+      });
+      onData(items);
     },
     (error) => {
       try {

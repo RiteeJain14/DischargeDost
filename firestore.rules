@@ -130,6 +130,28 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    function isValidFollowUpReport(data, planId) {
+      return data.keys().hasAll([
+          'planId', 'ownerId', 'reportDate', 'doctorOrClinic', 'reportType',
+          'language', 'summary', 'changes', 'clinicianSummary', 'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'planId', 'ownerId', 'reportDate', 'doctorOrClinic', 'reportType',
+          'language', 'summary', 'changes', 'clinicianSummary', 'createdAt'
+        ])
+        && data.planId is string && data.planId == planId
+        && data.ownerId is string && data.ownerId == request.auth.uid
+        && data.reportDate is string && data.reportDate.size() >= 4 && data.reportDate.size() <= 40
+        && data.doctorOrClinic is string && data.doctorOrClinic.size() <= 160
+        && data.reportType is string && data.reportType in ['opd_note', 'lab_report', 'prescription_update', 'other']
+        && isValidLanguage(data.language)
+        && data.summary is string && data.summary.size() >= 1 && data.summary.size() <= 2500
+        && data.changes is list && data.changes.size() <= 15
+        && (data.changes.size() == 0 || data.changes[0] is string)
+        && data.clinicianSummary is string && data.clinicianSummary.size() <= 2500
+        && data.createdAt is timestamp;
+    }
+
     // --- Collection: /users/{userId} (PII Isolated, Owner-Only) ---
     match /users/{userId} {
       allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
@@ -252,6 +274,31 @@ service cloud.firestore {
         allow delete: if isVerifiedUser()
           && isValidId(planId)
           && isValidId(logId)
+          && existing().ownerId == request.auth.uid;
+      }
+
+      // --- Subcollection: /recoveryPlans/{planId}/followUps/{followUpId} ---
+      match /followUps/{followUpId} {
+        allow get: if isSignedIn()
+          && isValidId(planId)
+          && isValidId(followUpId)
+          && existing().ownerId == request.auth.uid;
+
+        allow list: if isSignedIn()
+          && existing().ownerId == request.auth.uid;
+
+        allow create: if isVerifiedUser()
+          && isValidId(planId)
+          && isValidId(followUpId)
+          && isValidFollowUpReport(incoming(), planId)
+          && incoming().createdAt == request.time
+          && exists(/databases/$(database)/documents/recoveryPlans/$(planId))
+          && get(/databases/$(database)/documents/recoveryPlans/$(planId)).data.ownerId == request.auth.uid;
+
+        allow update: if false;
+        allow delete: if isVerifiedUser()
+          && isValidId(planId)
+          && isValidId(followUpId)
           && existing().ownerId == request.auth.uid;
       }
     }

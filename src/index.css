@@ -31,6 +31,27 @@
   text-wrap: balance;
 }
 
+@keyframes voiceWave {
+  0%, 100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.voice-bar {
+  transform-origin: center;
+  animation: voiceWave 0.9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-bar {
+    animation: none;
+    transform: scaleY(0.6);
+  }
+}
+
 @media print {
   body {
     background: #ffffff !important;

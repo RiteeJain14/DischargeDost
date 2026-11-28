@@ -4,6 +4,8 @@ import {
   Calendar,
   CheckCircle2,
   Clock,
+  FilePlus2,
+  FileText,
   Loader2,
   ShieldAlert,
   Utensils,
@@ -13,6 +15,8 @@ import {
 import {
   SLOT_LABELS,
   UI_COPY,
+  type FollowUpReport,
+  type FollowUpReportType,
   type LanguageCode,
   type MedicineItem,
   type MedicineSlot,
@@ -24,11 +28,77 @@ interface DailyPlanViewProps {
   plan: RecoveryPlan;
   language: LanguageCode;
   takenSlots: Record<string, boolean>;
+  followUps: FollowUpReport[];
   onToggleDose: (slotKey: string, nextTaken: boolean) => void;
   isTranslating: boolean;
   toolCalls: ToolCallRecord[];
   onGoToCheckIn: () => void;
+  onAddFollowUpReport: () => void;
 }
+
+const FOLLOWUP_VIEW_COPY: Record<
+  LanguageCode,
+  {
+    sectionTitle: string;
+    addBtn: string;
+    emptyNote: string;
+    changesHeading: string;
+    typeLabels: Record<FollowUpReportType, string>;
+  }
+> = {
+  en: {
+    sectionTitle: 'Follow-Up Doctor Reports',
+    addBtn: 'Add Follow-Up Report',
+    emptyNote:
+      'No follow-up doctor visits or lab reports uploaded yet. When your doctor updates medicines or shares lab results, add the report to keep this plan up to date.',
+    changesHeading: 'Key Updates & Changes',
+    typeLabels: {
+      opd_note: 'OPD Visit Note',
+      lab_report: 'Lab Report',
+      prescription_update: 'Prescription Update',
+      other: 'Follow-Up Document',
+    },
+  },
+  hi: {
+    sectionTitle: 'फ़ॉलो-अप डॉक्टर रिपोर्ट्स',
+    addBtn: 'फ़ॉलो-अप रिपोर्ट जोड़ें',
+    emptyNote:
+      'अभी तक कोई फ़ॉलो-अप रिपोर्ट या लैब टेस्ट नहीं जोड़ा गया है। जब डॉक्टर दवा बदलें या नई जांच रिपोर्ट दें, तो उसे यहाँ जोड़कर प्लान अपडेट रखें।',
+    changesHeading: 'मुख्य बदलाव',
+    typeLabels: {
+      opd_note: 'OPD विज़िट नोट',
+      lab_report: 'लैब रिपोर्ट',
+      prescription_update: 'नई दवा पर्ची',
+      other: 'फ़ॉलो-अप दस्तावेज़',
+    },
+  },
+  ta: {
+    sectionTitle: 'தொடர் மருத்துவர் அறிக்கைகள்',
+    addBtn: 'தொடர் அறிக்கை சேர்',
+    emptyNote:
+      'இதுவரை தொடர் மருத்துவ அல்லது ஆய்வக அறிக்கைகள் சேர்க்கப்படவில்லை. மருத்துவர் மருந்துகளை மாற்றும்போது அறிக்கையைச் சேர்த்து இத்திட்டத்தைப் புதுப்பிக்கவும்.',
+    changesHeading: 'முக்கிய மாற்றங்கள்',
+    typeLabels: {
+      opd_note: 'OPD குறிப்பு',
+      lab_report: 'ஆய்வக அறிக்கை',
+      prescription_update: 'மருந்து மாற்றம்',
+      other: 'தொடர் ஆவணம்',
+    },
+  },
+  bn: {
+    sectionTitle: 'ফলো-আপ ডাক্তারের রিপোর্ট',
+    addBtn: 'ফলো-আপ রিপোর্ট যোগ করুন',
+    emptyNote:
+      'এখনো কোনো ফলো-আপ ভিজিট বা ল্যাব রিপোর্ট যোগ করা হয়নি। ডাক্তার ওষুধ বদলালে বা নতুন রিপোর্ট দিলে এটি আপলোড করে প্ল্যান আপডেট রাখুন।',
+    changesHeading: 'প্রধান পরিবর্তনসমূহ',
+    typeLabels: {
+      opd_note: 'OPD ভিজিট নোট',
+      lab_report: 'ল্যাব রিপোর্ট',
+      prescription_update: 'প্রেসক্রিপশন আপডেট',
+      other: 'ফলো-আপ নথি',
+    },
+  },
+};
 
 const SLOT_ORDER: MedicineSlot[] = [
   'morning_before',
@@ -43,13 +113,15 @@ export function DailyPlanView({
   plan,
   language,
   takenSlots,
+  followUps,
   onToggleDose,
   isTranslating,
-  toolCalls,
   onGoToCheckIn,
+  onAddFollowUpReport,
 }: DailyPlanViewProps) {
   const copy = UI_COPY[language];
   const slotNames = SLOT_LABELS[language];
+  const fuView = FOLLOWUP_VIEW_COPY[language];
 
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
@@ -368,17 +440,63 @@ export function DailyPlanView({
         </div>
       </div>
 
-      {/* Transparent Gemini Function Call Verification Summary (when invoked) */}
-      {toolCalls.length > 0 && (
-        <details className="bg-white border border-slate-200 rounded-xl p-5">
-          <summary className="text-xs font-medium text-slate-600 cursor-pointer">
-            {copy.toolChecksSummary} ({toolCalls.map((t) => t.name).join(', ')})
-          </summary>
-          <pre className="mt-3 text-xs font-mono text-slate-700 bg-slate-50 p-3 rounded-lg overflow-x-auto">
-            {JSON.stringify(toolCalls, null, 2)}
-          </pre>
-        </details>
-      )}
+      {/* Follow-Up Doctor Reports Timeline */}
+      <div className="bg-white border border-slate-200 rounded-xl p-6 sm:p-8 space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200">
+          <div className="space-y-0.5">
+            <h2 className="font-display text-lg font-semibold text-slate-900 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-teal-700 shrink-0" />
+              <span>{fuView.sectionTitle}</span>
+            </h2>
+            <p className="text-xs font-mono text-slate-500 tabular-nums">
+              {followUps.length} {copy.entriesCountLabel}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onAddFollowUpReport}
+            className="min-h-[40px] px-4 py-2 text-xs font-semibold text-teal-900 bg-teal-50 hover:bg-teal-100 border border-teal-200 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer flex items-center justify-center gap-2 self-start sm:self-auto"
+          >
+            <FilePlus2 className="w-4 h-4 text-teal-700 shrink-0" />
+            <span>{fuView.addBtn}</span>
+          </button>
+        </div>
+
+        {followUps.length === 0 ? (
+          <p className="text-sm text-slate-500 leading-relaxed">{fuView.emptyNote}</p>
+        ) : (
+          <div className="divide-y divide-slate-200">
+            {followUps.map((rep) => (
+              <div key={rep.id} className="py-4 first:pt-1 last:pb-0 space-y-2.5">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+                  <span className="font-mono font-semibold text-slate-900">{rep.reportDate}</span>
+                  <span aria-hidden="true">·</span>
+                  <span className="font-medium text-teal-800">
+                    {fuView.typeLabels[rep.reportType] || fuView.typeLabels.other}
+                  </span>
+                  {rep.doctorOrClinic && (
+                    <>
+                      <span aria-hidden="true">·</span>
+                      <span>{rep.doctorOrClinic}</span>
+                    </>
+                  )}
+                </div>
+                <p className="text-sm text-slate-700 leading-relaxed">{rep.summary}</p>
+                {rep.changes.length > 0 && (
+                  <div className="pt-1">
+                    <p className="text-xs font-semibold text-slate-600">{fuView.changesHeading}</p>
+                    <ul className="mt-1 space-y-1 text-sm text-slate-800">
+                      {rep.changes.map((chg, idx) => (
+                        <li key={idx}>• {chg}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   );
 }

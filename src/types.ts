@@ -68,6 +68,22 @@ export interface DailyCheckIn {
   createdAtLabel?: string;
 }
 
+export type FollowUpReportType = 'opd_note' | 'lab_report' | 'prescription_update' | 'other';
+
+export interface FollowUpReport {
+  id: string;
+  planId: string;
+  ownerId?: string;
+  reportDate: string;
+  doctorOrClinic: string;
+  reportType: FollowUpReportType;
+  language: LanguageCode;
+  summary: string;
+  changes: string[];
+  clinicianSummary: string;
+  createdAtLabel?: string;
+}
+
 export interface ToolCallRecord {
   name: string;
   args: unknown;
@@ -248,6 +264,57 @@ export interface UiCopyStrings {
   colSlot: string;
   colInstruction: string;
 
+  // Front-Page Interactive Intake
+  intakeAssistantTitle: string;
+  intakeAssistantSub: string;
+  intakeGreetingNoFile: string;
+  intakePlaceholder: string;
+  intakeBuildFinalPlan: string;
+  intakeQuickBuild: string;
+  intakeReadyBanner: string;
+  intakeUploadHint: string;
+  intakeChipPainkiller: string;
+  intakeChipAskFood: string;
+  intakeChipSample: string;
+  intakeReviewingAttachment: string;
+  attachFileBtn: string;
+  homeHeadline: string;
+  homeLead: string;
+  homeFlow1Title: string;
+  homeFlow1Desc: string;
+  homeFlow2Title: string;
+  homeFlow2Desc: string;
+  homeFlow3Title: string;
+  homeFlow3Desc: string;
+  homeSampleCardTitle: string;
+  homeSampleCardMeta: string;
+  homeTrySampleCta: string;
+  homeDropStripLabel: string;
+  homeSpeakerYou: string;
+  homePreviewSectionTitle: string;
+  homePreviewSectionSub: string;
+  homePreviewTableTitle: string;
+  homePreviewColRx: string;
+  homePreviewColPlain: string;
+  homePreviewTestLink: string;
+  homeCapability1Title: string;
+  homeCapability1Desc: string;
+  homeCapability2Title: string;
+  homeCapability2Desc: string;
+  homeCapability3Title: string;
+  homeCapability3Desc: string;
+  scanMedicineCameraTitle: string;
+  scanningMedicineMsg: string;
+  medicineIdentifiedLabel: string;
+  previewTabSchedule: string;
+  previewTabSafety: string;
+  previewTabDoctor: string;
+  openCameraOption: string;
+  uploadMedicineOption: string;
+  capturePhotoBtn: string;
+  cancelCameraBtn: string;
+  cameraPermissionError: string;
+
   // Global Footer / Safety
   disclaimer: string;
 }
@@ -388,6 +455,57 @@ export const UI_COPY: Record<LanguageCode, UiCopyStrings> = {
     colSlot: 'Slot',
     colInstruction: 'Instruction',
 
+    intakeAssistantTitle: 'Interactive Recovery Assistant',
+    intakeAssistantSub: 'Chat, ask questions by live voice, or attach your discharge report — I’ll check if anything else is needed before creating your final plan.',
+    intakeGreetingNoFile: 'Hello! Ask me any question about hospital discharge medicines or recovery, start a live voice call above, or attach your discharge summary so I can build your personalized daily plan.',
+    intakePlaceholder: 'Ask a question, mention extra home medicines, or reply to DischargeDost...',
+    intakeBuildFinalPlan: 'Build Final Recovery Plan',
+    intakeQuickBuild: 'Build Plan Now',
+    intakeReadyBanner: 'Everything needed is ready — click to generate your personalized Daily Plan.',
+    intakeUploadHint: 'Attach a discharge photo/PDF or type your medicines above to build your daily plan.',
+    intakeChipPainkiller: 'Can I take Ibuprofen with blood thinners?',
+    intakeChipAskFood: 'Which tablets go before vs. after food?',
+    intakeChipSample: 'Load sample discharge & review it',
+    intakeReviewingAttachment: 'Reviewing your discharge report and checking what else may be needed...',
+    attachFileBtn: 'Attach Report',
+    homeHeadline: 'Your AI recovery friend turning discharge papers into daily care.',
+    homeLead:
+      'Speak on a live voice call, scan any medicine strip, or attach your discharge summary — DischargeDost screens drug conflicts and turns clinical shorthand into a clear family recovery plan.',
+    homeFlow1Title: '01. Speak or Attach Paper',
+    homeFlow1Desc: 'Ask questions by live voice, chat, or drop any discharge photo or PDF.',
+    homeFlow2Title: '02. Quick Safety Check',
+    homeFlow2Desc: 'Screens OTC painkillers, allergies, and before/after-food rules first.',
+    homeFlow3Title: '03. Daily Schedule & Doctor Brief',
+    homeFlow3Desc: 'Get a meal-timed tablet checklist, red-flag watch, and English SBAR note.',
+    homeSampleCardTitle: 'Apollo Cardiology Sample Sheet',
+    homeSampleCardMeta: 'Post-Angioplasty · 5 Medicines · Conflict Demo',
+    homeTrySampleCta: 'Try Sample',
+    homeDropStripLabel: 'Drop discharge photo or PDF here, or click to attach (PNG, JPG, WebP, PDF)',
+    homeSpeakerYou: 'You',
+    homePreviewSectionTitle: 'What your personalized recovery plan delivers',
+    homePreviewSectionSub: 'Every dense hospital line is verified for drug interactions and organized around real family meal times.',
+    homePreviewTableTitle: 'Example Clinical Translation & Conflict Check',
+    homePreviewColRx: 'Discharge Shorthand',
+    homePreviewColPlain: 'Family Schedule & Safety Guidance',
+    homePreviewTestLink: 'Load this sample into the assistant above',
+    homeCapability1Title: '4 Native Languages, One Switch',
+    homeCapability1Desc: 'Switch between English, हिन्दी, தமிழ், and বাংলা in the header — schedules, warnings, and audio adapt together.',
+    homeCapability2Title: 'Verified Drug & Timing Screening',
+    homeCapability2Desc: 'Flags risky home combinations (such as NSAID painkillers with blood thinners) and separates incompatible doses.',
+    homeCapability3Title: 'Clinic-Ready SBAR Handover',
+    homeCapability3Desc: 'Generates a concise one-page English summary of adherence and symptoms for your follow-up doctor visit.',
+    scanMedicineCameraTitle: 'Open camera or upload a medicine photo',
+    scanningMedicineMsg: 'Reading medicine label & checking its use...',
+    medicineIdentifiedLabel: 'Medicine Identified',
+    previewTabSchedule: 'Daily Timeline',
+    previewTabSafety: 'Safety Radar',
+    previewTabDoctor: 'Doctor Brief',
+    openCameraOption: 'Open Camera',
+    uploadMedicineOption: 'Upload Medicine Photo',
+    capturePhotoBtn: 'Capture Photo',
+    cancelCameraBtn: 'Cancel',
+    cameraPermissionError: 'Camera access was denied or unavailable. Use “Upload Medicine Photo” instead.',
+
     disclaimer: 'Supports your doctor’s discharge advice and never replaces licensed medical care.',
   },
   hi: {
@@ -523,6 +641,57 @@ export const UI_COPY: Record<LanguageCode, UiCopyStrings> = {
     colDose: 'खुराक',
     colSlot: 'समय',
     colInstruction: 'निर्देश',
+
+    intakeAssistantTitle: 'इंटरैक्टिव रिकवरी सहायक',
+    intakeAssistantSub: 'चैट करें, लाइव कॉल पर बोलकर पूछें, या डिस्चार्ज रिपोर्ट जोड़ें — अंतिम योजना बनाने से पहले मैं ज़रूरी सवाल पूछ लूँगा।',
+    intakeGreetingNoFile: 'नमस्ते! आप अस्पताल की दवाइयों या घर की देखभाल से जुड़ा कोई भी सवाल पूछ सकते हैं, ऊपर लाइव वॉइस कॉल शुरू कर सकते हैं, या नीचे अपनी डिस्चार्ज रिपोर्ट जोड़ सकते हैं।',
+    intakePlaceholder: 'अपना सवाल पूछें, घर की कोई अतिरिक्त दवा बताएं, या जवाब लिखें...',
+    intakeBuildFinalPlan: 'अंतिम रिकवरी योजना बनाएँ',
+    intakeQuickBuild: 'अभी योजना बनाएँ',
+    intakeReadyBanner: 'सभी ज़रूरी जानकारी मिल गई है — अपनी दैनिक योजना बनाने के लिए क्लिक करें।',
+    intakeUploadHint: 'योजना बनाने के लिए पहले डिस्चार्ज फोटो/PDF जोड़ें या दवाइयां लिखें।',
+    intakeChipPainkiller: 'क्या खून पतला करने की दवा के साथ Ibuprofen ले सकते हैं?',
+    intakeChipAskFood: 'कौन-सी गोलियाँ खाने से पहले और कौन-सी बाद में लेनी हैं?',
+    intakeChipSample: 'नमूना डिस्चार्ज पेपर लोड कर जांचें',
+    intakeReviewingAttachment: 'आपकी डिस्चार्ज रिपोर्ट पढ़ी जा रही है और आगे की ज़रूरी जानकारी जांची जा रही है...',
+    attachFileBtn: 'रिपोर्ट जोड़ें',
+    homeHeadline: 'अस्पताल से छुट्टी के बाद उलझन नहीं — हर दवा और देखभाल की साफ़ योजना।',
+    homeLead:
+      'लाइव वॉइस कॉल पर बात करें, किसी भी दवा की पट्टी स्कैन करें या डिस्चार्ज सारांश जोड़ें — DischargeDost दवाओं के टकराव की जांच कर परिवार के लिए सरल दैनिक योजना बनाता है।',
+    homeFlow1Title: '01. बोलें या रिपोर्ट जोड़ें',
+    homeFlow1Desc: 'लाइव कॉल पर पूछें, चैट करें या डिस्चार्ज फोटो/PDF सीधे छोड़ें।',
+    homeFlow2Title: '02. त्वरित सुरक्षा जांच',
+    homeFlow2Desc: 'अंतिम योजना से पहले घर की दर्द दवाइयां, एलर्जी और भोजन नियम जांचता है।',
+    homeFlow3Title: '03. दैनिक समय-सारणी और डॉक्टर नोट',
+    homeFlow3Desc: 'सुबह-शाम दवा सूची, खतरे के लक्षण और अंग्रेज़ी SBAR सारांश पाएं।',
+    homeSampleCardTitle: 'अपोलो कार्डियोलॉजी नमूना पर्चा',
+    homeSampleCardMeta: 'एंजियोप्लास्टी के बाद · 5 दवाइयां · टकराव जांच डेमो',
+    homeTrySampleCta: 'नमूना आज़माएं',
+    homeDropStripLabel: 'डिस्चार्ज फोटो या PDF यहाँ छोड़ें, या जोड़ने के लिए क्लिक करें (PNG, JPG, PDF)',
+    homeSpeakerYou: 'आप',
+    homePreviewSectionTitle: 'आपकी व्यक्तिगत रिकवरी योजना में क्या मिलता है',
+    homePreviewSectionSub: 'हर दवा की परस्पर टकराव जांच कर उसे घर के नाश्ते और खाने के समय के अनुसार सजाया जाता है।',
+    homePreviewTableTitle: 'उदाहरण: मेडिकल पर्चे से सरल पारिवारिक शेड्यूल',
+    homePreviewColRx: 'अस्पताल पर्चा विवरण',
+    homePreviewColPlain: 'सरल समय और सुरक्षा निर्देश',
+    homePreviewTestLink: 'इस नमूने को ऊपर सहायक में लोड करें',
+    homeCapability1Title: '4 भारतीय व अंग्रेज़ी भाषाएं',
+    homeCapability1Desc: 'ऊपर हेडर से भाषा बदलें — पूरी समय-सारणी, चेतावनियां और ऑडियो तुरंत उसी भाषा में बदलते हैं।',
+    homeCapability2Title: 'दवा टकराव व समय अंतराल जांच',
+    homeCapability2Desc: 'खून पतला करने की दवा के साथ दर्द की गोली जैसे जोखिम और खाली पेट नियमों की तुरंत पहचान।',
+    homeCapability3Title: 'डॉक्टर के लिए SBAR सारांश',
+    homeCapability3Desc: 'फॉलो-अप विज़िट के लिए एक पन्ने का स्पष्ट अंग्रेज़ी क्लिनिकल नोट तैयार करता है।',
+    scanMedicineCameraTitle: 'दवा का फोटो खींचने या अपलोड करने के लिए कैमरा खोलें',
+    scanningMedicineMsg: 'दवा का नाम और उसका उपयोग पढ़ा जा रहा है...',
+    medicineIdentifiedLabel: 'पहचानी गई दवा',
+    previewTabSchedule: 'दैनिक समय-सारणी',
+    previewTabSafety: 'सुरक्षा जांच',
+    previewTabDoctor: 'डॉक्टर नोट',
+    openCameraOption: 'कैमरा खोलें',
+    uploadMedicineOption: 'दवा की फोटो अपलोड करें',
+    capturePhotoBtn: 'फोटो लें',
+    cancelCameraBtn: 'रद्द करें',
+    cameraPermissionError: 'कैमरा उपलब्ध नहीं है या अनुमति नहीं मिली। कृपया “दवा की फोटो अपलोड करें” चुनें।',
 
     disclaimer: 'यह आपके डॉक्टर की सलाह में मदद के लिए है, डॉक्टर की जगह नहीं लेता।',
   },
@@ -660,6 +829,57 @@ export const UI_COPY: Record<LanguageCode, UiCopyStrings> = {
     colSlot: 'நேரம்',
     colInstruction: 'வழிமுறை',
 
+    intakeAssistantTitle: 'நேரடி பராமரிப்பு வழிகாட்டி',
+    intakeAssistantSub: 'உரையாடவும், நேரடி குரல் அழைப்பில் பேசவும், அல்லது டிஸ்சார்ஜ் அறிக்கையை இணைக்கவும் — இறுதித் திட்டம் முன் தேவையானதைக் கேட்பேன்.',
+    intakeGreetingNoFile: 'வணக்கம்! மருந்துகள் அல்லது வீட்டுப் பராமரிப்பு குறித்து எதுவும் கேளுங்கள், மேலே நேரடி அழைப்பைத் தொடங்குங்கள், அல்லது உங்கள் டிஸ்சார்ஜ் தாளை இணைக்கவும்.',
+    intakePlaceholder: 'கேள்வி கேளுங்கள், வீட்டு மருந்துகளைக் குறிப்பிடுங்கள், அல்லது பதில் எழுதுங்கள்...',
+    intakeBuildFinalPlan: 'இறுதிப் பராமரிப்புத் திட்டத்தை உருவாக்கு',
+    intakeQuickBuild: 'இப்போதே திட்டத்தை உருவாக்கு',
+    intakeReadyBanner: 'தேவையான தகவல்கள் தயார் — உங்கள் தினசரி திட்டத்தை உருவாக்க கிளிக் செய்யவும்.',
+    intakeUploadHint: 'திட்டம் உருவாக்க முதலில் டிஸ்சார்ஜ் படம்/PDF அல்லது மருந்துகளைச் சேர்க்கவும்.',
+    intakeChipPainkiller: 'ரத்தம் மெலிதாக்கும் மருந்துடன் Ibuprofen எடுக்கலாமா?',
+    intakeChipAskFood: 'உணவுக்கு முன் மற்றும் பின் எடுக்க வேண்டிய மாத்திரைகள் எவை?',
+    intakeChipSample: 'மாதிரி டிஸ்சார்ஜ் தாளை ஏற்றி ஆய்வு செய்',
+    intakeReviewingAttachment: 'உங்கள் டிஸ்சார்ஜ் அறிக்கை படிக்கப்பட்டு தேவையான கேள்விகள் தயாராகின்றன...',
+    attachFileBtn: 'அறிக்கை இணை',
+    homeHeadline: 'மருத்துவமனை டிஸ்சார்ஜுக்குப் பின் குழப்பமில்லை — பாதுகாப்பான வீட்டு பராமரிப்பு.',
+    homeLead:
+      'நேரடி குரல் அழைப்பில் பேசவும், எந்த மருந்து அட்டையையும் ஸ்கேன் செய்யவும், அல்லது டிஸ்சார்ஜ் தாளை இணைக்கவும் — DischargeDost மருந்து முரண்பாடுகளைச் சரிபார்த்து தெளிவான தினசரி அட்டவணை தரும்.',
+    homeFlow1Title: '01. பேசவும் அல்லது தாளை இணைக்கவும்',
+    homeFlow1Desc: 'நேரடி அழைப்பில் கேளுங்கள், தட்டச்சு செய்யுங்கள் அல்லது படம்/PDF சேர்க்கவும்.',
+    homeFlow2Title: '02. விரைவு பாதுகாப்புச் சரிபார்ப்பு',
+    homeFlow2Desc: 'வலி மாத்திரைகள், ஒவ்வாமை மற்றும் உணவு இடைவெளியை முதலில் சரிபார்க்கிறது.',
+    homeFlow3Title: '03. தினசரி அட்டவணை & மருத்துவர் குறிப்பு',
+    homeFlow3Desc: 'உணவு நேர மாத்திரை பட்டியல், அபாய எச்சரிக்கை மற்றும் ஆங்கில SBAR குறிப்பு.',
+    homeSampleCardTitle: 'அப்போலோ இதய சிகிச்சை மாதிரி தாள்',
+    homeSampleCardMeta: 'ஆஞ்சியோபிளாஸ்டிக்குப் பின் · 5 மருந்துகள் · முரண்பாடு மாதிரி',
+    homeTrySampleCta: 'மாதிரி முயற்சி',
+    homeDropStripLabel: 'டிஸ்சார்ஜ் படம் அல்லது PDF-ஐ இங்கே விடவும் அல்லது கிளிக் செய்யவும்',
+    homeSpeakerYou: 'நீங்கள்',
+    homePreviewSectionTitle: 'உங்கள் தனிப்பயன் பராமரிப்புத் திட்டத்தில் கிடைப்பவை',
+    homePreviewSectionSub: 'ஒவ்வொரு மருந்தும் முரண்பாட்டிற்குச் சரிபார்க்கப்பட்டு குடும்ப உணவு நேரத்திற்கு ஏற்ப அமைக்கப்படும்.',
+    homePreviewTableTitle: 'உதாரணம்: மருந்துச் சீட்டிலிருந்து எளிய குடும்ப அட்டவணை',
+    homePreviewColRx: 'மருத்துவமனை சுருக்கம்',
+    homePreviewColPlain: 'குடும்ப நேரமும் பாதுகாப்பு வழிமுறையும்',
+    homePreviewTestLink: 'இந்த மாதிரியை மேலே வழிகாட்டியில் ஏற்றவும்',
+    homeCapability1Title: '4 மொழிகளில் உடனடி மாற்றம்',
+    homeCapability1Desc: 'மேலே மொழியை மாற்றினால் அட்டவணை, எச்சரிக்கைகள் மற்றும் ஒலி அனைத்தும் உடனே மாறும்.',
+    homeCapability2Title: 'மருந்து முரண்பாடு & நேர ஆய்வு',
+    homeCapability2Desc: 'ரத்தம் மெலிதாக்கும் மருந்துடன் வலி மாத்திரை போன்ற அபாயங்களை உடனே கண்டறியும்.',
+    homeCapability3Title: 'மருத்துவர் SBAR சுருக்கம்',
+    homeCapability3Desc: 'மறுபரிசோதனைக்கு ஒரு பக்க ஆங்கில மருத்துவச் சுருக்கத்தை உருவாக்கும்.',
+    scanMedicineCameraTitle: 'கேமரா திறக்கவும் அல்லது மருந்து படம் பதிவேற்றவும்',
+    scanningMedicineMsg: 'மருந்து பெயர் மற்றும் பயன் படிக்கப்படுகிறது...',
+    medicineIdentifiedLabel: 'அடையாளம் காணப்பட்ட மருந்து',
+    previewTabSchedule: 'தினசரி நேரம்',
+    previewTabSafety: 'பாதுகாப்பு ஆய்வு',
+    previewTabDoctor: 'மருத்துவர் குறிப்பு',
+    openCameraOption: 'கேமரா திற',
+    uploadMedicineOption: 'மருந்து படம் பதிவேற்று',
+    capturePhotoBtn: 'படம் எடு',
+    cancelCameraBtn: 'ரத்து செய்',
+    cameraPermissionError: 'கேமரா அனுமதி கிடைக்கவில்லை. “மருந்து படம் பதிவேற்று” விருப்பத்தைப் பயன்படுத்தவும்.',
+
     disclaimer: 'இது மருத்துவரின் ஆலோசனைக்கு உதவியாக மட்டுமே; மருத்துவருக்கு மாற்றல்ல.',
   },
   bn: {
@@ -795,6 +1015,57 @@ export const UI_COPY: Record<LanguageCode, UiCopyStrings> = {
     colDose: 'ডোজ',
     colSlot: 'সময়',
     colInstruction: 'নির্দেশনা',
+
+    intakeAssistantTitle: 'ইন্টারঅ্যাক্টিভ রিকভারি সহায়ক',
+    intakeAssistantSub: 'চ্যাট করুন, লাইভ ভয়েস কলে কথা বলুন, বা ডিসচার্জ রিপোর্ট যোগ করুন — চূড়ান্ত পরিকল্পনা তৈরির আগে আর কিছু প্রয়োজন কি না জেনে নেব।',
+    intakeGreetingNoFile: 'নমস্কার! ওষুধ বা বাড়ির যত্ন নিয়ে যেকোনো প্রশ্ন করুন, উপরে লাইভ ভয়েস কল শুরু করুন, অথবা আপনার ডিসচার্জ রিপোর্ট যোগ করুন।',
+    intakePlaceholder: 'প্রশ্ন লিখুন, বাড়ির কোনো অতিরিক্ত ওষুধের কথা জানান, বা উত্তর দিন...',
+    intakeBuildFinalPlan: 'চূড়ান্ত রিকভারি পরিকল্পনা তৈরি করুন',
+    intakeQuickBuild: 'এখনই পরিকল্পনা তৈরি করুন',
+    intakeReadyBanner: 'প্রয়োজনীয় সব তথ্য প্রস্তুত — আপনার দৈনিক পরিকল্পনা তৈরি করতে ক্লিক করুন।',
+    intakeUploadHint: 'পরিকল্পনা তৈরি করতে প্রথমে ডিসচার্জ ছবি/PDF বা ওষুধের বিবরণ যোগ করুন।',
+    intakeChipPainkiller: 'রক্ত পাতলা করার ওষুধের সাথে কি Ibuprofen খাওয়া যায়?',
+    intakeChipAskFood: 'কোন ট্যাবলেট খাবারের আগে আর কোনটি পরে খেতে হবে?',
+    intakeChipSample: 'নমুনা ডিসচার্জ রিপোর্ট লোড করে দেখুন',
+    intakeReviewingAttachment: 'আপনার ডিসচার্জ রিপোর্ট পড়া হচ্ছে এবং আর কিছু জানা প্রয়োজন কি না দেখা হচ্ছে...',
+    attachFileBtn: 'রিপোর্ট দিন',
+    homeHeadline: 'হাসপাতাল ছাড়ার পর আর বিভ্রান্তি নয় — প্রতিটি ওষুধ ও যত্নের স্পষ্ট পরিকল্পনা।',
+    homeLead:
+      'লাইভ ভয়েস কলে কথা বলুন, যেকোনো ওষুধের পাতা স্ক্যান করুন বা ডিসচার্জ সারাংশ দিন — DischargeDost ওষুধের সতর্কতা যাচাই করে সহজ পারিবারিক রুটিন তৈরি করে।',
+    homeFlow1Title: '01. কথা বলুন বা রিপোর্ট দিন',
+    homeFlow1Desc: 'লাইভ কলে প্রশ্ন করুন, চ্যাট করুন বা ডিসচার্জ ছবি/PDF যোগ করুন।',
+    homeFlow2Title: '02. দ্রুত নিরাপত্তা যাচাই',
+    homeFlow2Desc: 'চূড়ান্ত তালিকার আগে ব্যথার ওষুধ, অ্যালার্জি ও খাবারের নিয়ম জেনে নেয়।',
+    homeFlow3Title: '03. দৈনিক তালিকা ও ডাক্তারের নোট',
+    homeFlow3Desc: 'খাবার অনুযায়ী ওষুধের রুটিন, বিপদ সংকেত এবং ইংরেজি SBAR সারাংশ পান।',
+    homeSampleCardTitle: 'অ্যাপোলো কার্ডিওলজি নমুনা রিপোর্ট',
+    homeSampleCardMeta: 'অ্যাঞ্জিওপ্লাস্টির পর · ৫টি ওষুধ · সতর্কতা ডেমো',
+    homeTrySampleCta: 'নমুনা দেখুন',
+    homeDropStripLabel: 'ডিসচার্জ ছবি বা PDF এখানে টেনে আনুন অথবা ক্লিক করে যোগ করুন',
+    homeSpeakerYou: 'আপনি',
+    homePreviewSectionTitle: 'আপনার ব্যক্তিগত রিকভারি পরিকল্পনায় যা থাকছে',
+    homePreviewSectionSub: 'প্রতিটি ওষুধের মিথস্ক্রিয়া যাচাই করে পরিবারের খাবারের সময়ের সাথে মিলিয়ে সাজানো হয়।',
+    homePreviewTableTitle: 'উদাহরণ: প্রেসক্রিপশন থেকে সহজ পারিবারিক রুটিন',
+    homePreviewColRx: 'হাসপাতালের সংক্ষিপ্ত লেখা',
+    homePreviewColPlain: 'পারিবারিক সময় ও নিরাপত্তা নির্দেশনা',
+    homePreviewTestLink: 'উপরের সহায়কে এই নমুনাটি লোড করুন',
+    homeCapability1Title: '৪টি ভাষায় তাৎক্ষণিক সুবিধা',
+    homeCapability1Desc: 'উপরের হেডার থেকে ভাষা বদলালে সময়সূচী, সতর্কতা ও অডিও সাথে সাথে বদলে যায়।',
+    homeCapability2Title: 'ওষুধের মিথস্ক্রিয়া ও সময় যাচাই',
+    homeCapability2Desc: 'রক্ত পাতলা করার ওষুধের সাথে ব্যথার ওষুধের ঝুঁকি ও খাবারের ব্যবধান চিহ্নিত করে।',
+    homeCapability3Title: 'ডাক্তারের জন্য SBAR নোট',
+    homeCapability3Desc: 'পরবর্তী ভিজিটের জন্য এক পৃষ্ঠার স্পষ্ট ইংরেজি ক্লিনিক্যাল নোট তৈরি করে।',
+    scanMedicineCameraTitle: 'ক্যামেরা খুলুন বা ওষুধের ছবি আপলোড করুন',
+    scanningMedicineMsg: 'ওষুধের নাম ও কাজ পড়া হচ্ছে...',
+    medicineIdentifiedLabel: 'শনাক্ত করা ওষুধ',
+    previewTabSchedule: 'দৈনিক সময়সূচী',
+    previewTabSafety: 'সুরক্ষা যাচাই',
+    previewTabDoctor: 'ডাক্তার নোট',
+    openCameraOption: 'ক্যামেরা খুলুন',
+    uploadMedicineOption: 'ওষুধের ছবি আপলোড করুন',
+    capturePhotoBtn: 'ছবি তুলুন',
+    cancelCameraBtn: 'বাতিল করুন',
+    cameraPermissionError: 'ক্যামেরা পাওয়া যায়নি বা অনুমতি দেওয়া হয়নি। “ওষুধের ছবি আপলোড করুন” ব্যবহার করুন।',
 
     disclaimer: 'এটি ডাক্তারের পরামর্শের সহায়ক মাত্র, চিকিৎসার বিকল্প নয়।',
   },

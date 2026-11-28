@@ -270,6 +270,76 @@
         }
       },
       "required": ["planId", "ownerId", "dateKey", "slotKey", "taken", "updatedAt"]
+    },
+    "FollowUpReport": {
+      "title": "FollowUpReport",
+      "description": "Doctor follow-up OPD note, lab result, or updated prescription merged into an existing recovery plan.",
+      "type": "object",
+      "properties": {
+        "planId": {
+          "type": "string",
+          "description": "Parent recovery plan ID.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the recovery plan owner.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "reportDate": {
+          "type": "string",
+          "description": "Date of the follow-up visit or report.",
+          "maxLength": 40
+        },
+        "doctorOrClinic": {
+          "type": "string",
+          "description": "Doctor or clinic name from the follow-up report.",
+          "maxLength": 160
+        },
+        "reportType": {
+          "type": "string",
+          "enum": ["opd_note", "lab_report", "prescription_update", "other"],
+          "description": "Category of follow-up report."
+        },
+        "language": {
+          "type": "string",
+          "enum": ["en", "hi", "ta", "bn"],
+          "description": "Language of the patient-facing summary."
+        },
+        "summary": {
+          "type": "string",
+          "description": "Plain-language summary of the doctor's follow-up report.",
+          "maxLength": 2500
+        },
+        "changes": {
+          "type": "array",
+          "description": "Bounded list of medication, dose, lab, or care changes extracted from the follow-up."
+        },
+        "clinicianSummary": {
+          "type": "string",
+          "description": "Concise English clinical summary for clinician handover PDF.",
+          "maxLength": 2500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of follow-up creation."
+        }
+      },
+      "required": [
+        "planId",
+        "ownerId",
+        "reportDate",
+        "doctorOrClinic",
+        "reportType",
+        "language",
+        "summary",
+        "changes",
+        "clinicianSummary",
+        "createdAt"
+      ]
     }
   },
   "firestore": {
@@ -288,6 +358,10 @@
     "/recoveryPlans/{planId}/doseLogs/{logId}": {
       "schema": { "$ref": "#/entities/DoseLog" },
       "description": "Daily medication adherence logs scoped to a parent recovery plan."
+    },
+    "/recoveryPlans/{planId}/followUps/{followUpId}": {
+      "schema": { "$ref": "#/entities/FollowUpReport" },
+      "description": "Doctor follow-up reports, lab results, and updated prescriptions linked to a parent recovery plan."
     }
   }
 }

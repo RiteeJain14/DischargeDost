@@ -9,12 +9,15 @@ import { UploadWorkspace } from './components/UploadWorkspace';
 import {
   auth,
   getUserPreferredLanguage,
+  isFirebaseConfigured,
   saveDailyCheckIn,
+  saveFollowUpReport,
   saveRecoveryPlan,
   signInWithGoogle,
   signOutUser,
   subscribeDoseLogs,
   subscribePlanCheckIns,
+  subscribePlanFollowUps,
   subscribeUserPlans,
   testFirestoreConnection,
   toggleDoseLog,
@@ -24,6 +27,7 @@ import {
 import {
   UI_COPY,
   type DailyCheckIn,
+  type FollowUpReport,
   type LanguageCode,
   type RecoveryPlan,
   type ToolCallRecord,
@@ -66,6 +70,8 @@ function DischargeDostApp() {
 
   const [takenSlots, setTakenSlots] = useState<Record<string, boolean>>({});
   const [checkIns, setCheckIns] = useState<DailyCheckIn[]>([]);
+  const [followUps, setFollowUps] = useState<FollowUpReport[]>([]);
+  const [uploadMode, setUploadMode] = useState<'new' | 'followup'>('new');
   const [toolCalls, setToolCalls] = useState<ToolCallRecord[]>([]);
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -78,6 +84,7 @@ function DischargeDostApp() {
 
   const languageRef = useRef<LanguageCode>(language);
   const autoTranslatedKeyRef = useRef<string | null>(null);
+  const userClearedPlanRef = useRef(false);
 
   useEffect(() => {
     languageRef.current = language;
@@ -86,6 +93,11 @@ function DischargeDostApp() {
   const todayKey = getTodayDateKey();
 
   useEffect(() => {
+    if (!isFirebaseConfigured || !auth) {
+      setAuthReady(true);
+      setProfileSynced(true);
+      return;
+    }
     testFirestoreConnection();
     const unsub = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
@@ -139,6 +151,13 @@ function DischargeDostApp() {
           if (prev && plans.some((p) => p.id === prev.id)) {
             return plans.find((p) => p.id === prev.id) ?? prev;
           }
+          if (userClearedPlanRef.current) {
+            return null;
+          }
+          if (!prev && plans.length > 0) {
+            setUploadMode('followup');
+            return plans[0];
+          }
           return prev ?? plans[0] ?? null;
         });
       },
@@ -149,7 +168,7 @@ function DischargeDostApp() {
     return () => unsub();
   }, [authReady, user]);
 
-  // Subscribe to check-ins & daily dose logs when viewing a Firestore-persisted plan
+  // Subscribe to check-ins, follow-up reports & daily dose logs when viewing a Firestore-persisted plan
   useEffect(() => {
     if (!authReady || !user || !activePlan || activePlan.id.startsWith('local_')) {
       return;
@@ -158,6 +177,12 @@ function DischargeDostApp() {
       activePlan.id,
       user.uid,
       (items) => setCheckIns(items),
+      (err) => setSyncNotice(err.message),
+    );
+    const unsubFollowUps = subscribePlanFollowUps(
+      activePlan.id,
+      user.uid,
+      (items) => setFollowUps(items),
       (err) => setSyncNotice(err.message),
     );
     const unsubDoses = subscribeDoseLogs(
@@ -169,6 +194,7 @@ function DischargeDostApp() {
     );
     return () => {
       unsubCheckIns();
+      unsubFollowUps();
       unsubDoses();
     };
   }, [authReady, user, activePlan?.id, todayKey]);
@@ -241,20 +267,42 @@ function DischargeDostApp() {
     }
   };
 
+  const handleChangeUploadMode = (mode: 'new' | 'followup') => {
+    setUploadMode(mode);
+    if (mode === 'new') {
+      userClearedPlanRef.current = true;
+      autoTranslatedKeyRef.current = null;
+      setActivePlan(null);
+      setCheckIns([]);
+      setFollowUps([]);
+      setTakenSlots({});
+    } else {
+      userClearedPlanRef.current = false;
+      if (!activePlan && savedPlans.length > 0) {
+        autoTranslatedKeyRef.current = null;
+        setActivePlan(savedPlans[0]);
+      }
+    }
+  };
+
   const handleAuthAction = async () => {
     setSyncNotice(null);
     try {
       if (user) {
         await signOutUser();
+        userClearedPlanRef.current = false;
         setActivePlan(null);
         setCheckIns([]);
+        setFollowUps([]);
         setTakenSlots({});
+        setUploadMode('new');
         setActiveTab('upload');
       } else {
         const cred = await signInWithGoogle();
         if (cred.user && activePlan && activePlan.id.startsWith('local_')) {
           const { id: _localId, ...rest } = activePlan;
           const firestoreId = await saveRecoveryPlan({ ...rest, language });
+          userClearedPlanRef.current = false;
           setActivePlan({ ...rest, id: firestoreId, ownerId: cred.user.uid, language });
           setSyncNotice('Your current recovery plan has been saved to Firestore.');
         }
@@ -268,6 +316,7 @@ function DischargeDostApp() {
     imageBase64?: string;
     mimeType?: string;
     rawText?: string;
+    intakeNotes?: string;
     language: LanguageCode;
   }) => {
     setIsAnalyzing(true);
@@ -294,7 +343,9 @@ function DischargeDostApp() {
       setToolCalls(Array.isArray(data.toolCallsExecuted) ? data.toolCallsExecuted : []);
       setTakenSlots({});
       setCheckIns([]);
+      setFollowUps([]);
 
+      userClearedPlanRef.current = false;
       if (user) {
         const planId = await saveRecoveryPlan(generatedPlan);
         setActivePlan({ ...generatedPlan, id: planId, ownerId: user.uid });
@@ -302,9 +353,88 @@ function DischargeDostApp() {
         setActivePlan({ ...generatedPlan, id: `local_${Date.now()}` });
       }
 
+      setUploadMode('followup');
       setActiveTab('plan');
     } catch (err) {
       setAnalyzeError(err instanceof Error ? err.message : 'Could not process discharge summary.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleApplyFollowUp = async (payload: {
+    imageBase64?: string;
+    mimeType?: string;
+    rawText?: string;
+    intakeNotes?: string;
+    language: LanguageCode;
+  }) => {
+    if (!activePlan) return;
+    setIsAnalyzing(true);
+    setAnalyzeError(null);
+    setSyncNotice(null);
+
+    try {
+      const res = await fetch('/api/discharge/followup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          existingPlan: activePlan,
+          checkIns: checkIns.slice(0, 10),
+          previousFollowUps: followUps.slice(0, 8),
+          ...payload,
+          language,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.updatedPlan || !data.followUpReport) {
+        throw new Error(data.error || 'Failed to apply follow-up report.');
+      }
+
+      if (Array.isArray(data.toolCallsExecuted)) {
+        setToolCalls(data.toolCallsExecuted);
+      }
+
+      const mergedPlan: RecoveryPlan = {
+        ...activePlan,
+        ...data.updatedPlan,
+        id: activePlan.id,
+        ownerId: activePlan.ownerId,
+        language,
+        status: activePlan.status ?? 'active',
+      };
+
+      const newReportData: Omit<FollowUpReport, 'id' | 'planId' | 'ownerId'> = {
+        reportDate: data.followUpReport.reportDate || todayKey,
+        doctorOrClinic: data.followUpReport.doctorOrClinic || activePlan.hospitalName || 'Follow-Up Clinic',
+        reportType: data.followUpReport.reportType || 'opd_note',
+        language,
+        summary: data.followUpReport.summary || 'Follow-up report applied.',
+        changes: Array.isArray(data.followUpReport.changes)
+          ? data.followUpReport.changes.map(String)
+          : [],
+        clinicianSummary: data.followUpReport.clinicianSummary || data.followUpReport.summary || '',
+        createdAtLabel: data.followUpReport.reportDate || todayKey,
+      };
+
+      setActivePlan(mergedPlan);
+
+      if (user && !activePlan.id.startsWith('local_')) {
+        await updateRecoveryPlanTranslation(activePlan.id, mergedPlan);
+        await saveFollowUpReport(activePlan.id, newReportData);
+      } else {
+        const localFollowUp: FollowUpReport = {
+          ...newReportData,
+          id: `local_fup_${Date.now()}`,
+          planId: activePlan.id,
+        };
+        setFollowUps((prev) => [localFollowUp, ...prev]);
+      }
+
+      setSyncNotice(`Follow-up report added and "${mergedPlan.title}" has been updated.`);
+      setActiveTab('plan');
+    } catch (err) {
+      setAnalyzeError(err instanceof Error ? err.message : 'Could not process follow-up report.');
     } finally {
       setIsAnalyzing(false);
     }
@@ -396,7 +526,7 @@ function DischargeDostApp() {
   const copy = UI_COPY[language];
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+    <div className="min-h-screen flex flex-col bg-slate-50 bg-[radial-gradient(ellipse_at_top,_rgba(15,118,110,0.06),_transparent_55%)] text-slate-900">
       <TopBar
         activeTab={activeTab}
         onSelectTab={setActiveTab}
@@ -408,30 +538,43 @@ function DischargeDostApp() {
         onAuthAction={handleAuthAction}
       />
 
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8 space-y-6">
-        {/* Saved Plans Selector Bar when authenticated with saved Firestore plans */}
-        {user && savedPlans.length > 0 && (
-          <div className="no-print flex flex-wrap items-center justify-between gap-4 bg-white border border-slate-200 rounded-lg px-4 py-3 text-xs">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="font-medium text-slate-500">{copy.savedPlansLabel}</span>
-              {savedPlans.slice(0, 5).map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => {
-                    autoTranslatedKeyRef.current = null;
-                    setActivePlan(p);
-                    if (activeTab === 'upload') setActiveTab('plan');
-                  }}
-                  className={`px-2.5 py-1 rounded font-medium transition-colors cursor-pointer ${
-                    activePlan?.id === p.id
-                      ? 'bg-teal-50 text-teal-800 border border-teal-200'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  {p.title}
-                </button>
-              ))}
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+        {/* Saved Plans Dropdown Selector (First / Upload page only) */}
+        {activeTab === 'upload' && user && savedPlans.length > 0 && (
+          <div className="no-print flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200 rounded-xl px-4 py-3 text-xs">
+            <div className="flex flex-wrap items-center gap-2.5 min-w-0">
+              <label
+                htmlFor="saved-recovery-plan-select"
+                className="font-semibold text-slate-700 whitespace-nowrap"
+              >
+                {copy.savedPlansLabel}
+              </label>
+              <select
+                id="saved-recovery-plan-select"
+                value={activePlan?.id ?? ''}
+                onChange={(e) => {
+                  const selectedId = e.target.value;
+                  if (!selectedId) {
+                    handleChangeUploadMode('new');
+                    return;
+                  }
+                  const chosen = savedPlans.find((p) => p.id === selectedId);
+                  if (!chosen) return;
+                  userClearedPlanRef.current = false;
+                  autoTranslatedKeyRef.current = null;
+                  setActivePlan(chosen);
+                  setUploadMode('followup');
+                }}
+                className="min-h-[36px] max-w-full sm:max-w-sm rounded-lg border border-slate-300 bg-slate-50 hover:border-teal-500 focus:border-teal-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-teal-700/15 px-3 py-1.5 text-xs font-medium text-slate-900 cursor-pointer"
+              >
+                <option value="">-- Select a saved plan --</option>
+                {savedPlans.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                    {p.dischargeDate ? ` (${p.dischargeDate})` : ''}
+                  </option>
+                ))}
+              </select>
             </div>
             <span className="text-slate-500 truncate max-w-xs">{user.email}</span>
           </div>
@@ -459,9 +602,16 @@ function DischargeDostApp() {
         {activeTab === 'upload' && (
           <UploadWorkspace
             language={language}
+            activePlan={activePlan}
+            hasSavedPlans={savedPlans.length > 0}
+            checkIns={checkIns}
+            followUps={followUps}
+            uploadMode={uploadMode}
+            onChangeUploadMode={handleChangeUploadMode}
             isAnalyzing={isAnalyzing}
             errorMessage={analyzeError}
             onAnalyze={handleAnalyze}
+            onApplyFollowUp={handleApplyFollowUp}
           />
         )}
 
@@ -470,10 +620,15 @@ function DischargeDostApp() {
             plan={activePlan}
             language={language}
             takenSlots={takenSlots}
+            followUps={followUps}
             onToggleDose={handleToggleDose}
             isTranslating={isTranslating}
             toolCalls={toolCalls}
             onGoToCheckIn={() => setActiveTab('checkin')}
+            onAddFollowUpReport={() => {
+              setUploadMode('followup');
+              setActiveTab('upload');
+            }}
           />
         )}
 
@@ -496,6 +651,7 @@ function DischargeDostApp() {
             language={language}
             takenSlots={takenSlots}
             checkIns={checkIns}
+            followUps={followUps}
           />
         )}
       </main>
